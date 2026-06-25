@@ -1,0 +1,54 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Backend Dev",
+			"type": "shell",
+			"command": "c:/Development/todo-app/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"uvicorn",
+				"app.main:app",
+				"--reload",
+				"--host",
+				"0.0.0.0",
+				"--port",
+				"8000"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/backend"
+			},
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run Frontend Dev",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"dev",
+				"--",
+				"--host",
+				"0.0.0.0",
+				"--port",
+				"5173"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/frontend"
+			},
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Run Full Stack Dev (No Docker)",
+			"dependsOn": [
+				"Run Backend Dev",
+				"Run Frontend Dev"
+			],
+			"dependsOrder": "parallel",
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/api.ts","./src/auth_api.ts","./src/main.tsx","./src/socket.ts","./src/types.ts","./src/components/addtaskmodal.tsx","./src/components/authpage.tsx"],"version":"5.9.3"}
