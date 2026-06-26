@@ -1,6 +1,6 @@
 import type { Todo, TodoFormData } from "./types";
 
-const API_BASE = "";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 export type TodoApi = {
   id: string;

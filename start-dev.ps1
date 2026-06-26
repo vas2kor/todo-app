@@ -5,7 +5,7 @@
 .DESCRIPTION
     - Optionally sets up px-proxy first (skipped with -NoProxy).
     - Starts the FastAPI backend on port 8000.
-    - Starts the Vite frontend dev server on port 5173.
+    - Starts the Vite frontend dev server on port 5500.
     - Both servers run in separate windows by default.
     - Use -Foreground to block in the current terminal (backend only; frontend still opens a window).
 
@@ -20,7 +20,7 @@
     Port for the FastAPI backend. Default: 8000.
 
 .PARAMETER FrontendPort
-    Port for the Vite frontend. Default: 5173.
+    Port for the Vite frontend. Default: 5500.
 
 .EXAMPLE
     .\start-dev.ps1
@@ -36,7 +36,7 @@ param(
     [switch]$NoProxy,
     [switch]$Foreground,
     [int]$BackendPort = 8000,
-    [int]$FrontendPort = 5173
+    [int]$FrontendPort = 5500
 )
 
 $ErrorActionPreference = "Stop"

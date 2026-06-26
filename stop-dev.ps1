@@ -9,7 +9,7 @@
     Port the FastAPI backend is running on. Default: 8000.
 
 .PARAMETER FrontendPort
-    Port the Vite frontend is running on. Default: 5173.
+    Port the Vite frontend is running on. Default: 5500.
 
 .EXAMPLE
     .\stop-dev.ps1
@@ -20,7 +20,7 @@
 [CmdletBinding()]
 param(
     [int]$BackendPort  = 8000,
-    [int]$FrontendPort = 5173
+    [int]$FrontendPort = 5500
 )
 
 $ErrorActionPreference = "Stop"

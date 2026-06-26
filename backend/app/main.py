@@ -1,7 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import Response
 from socketio import ASGIApp
 from sqlalchemy import text
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import settings
 from app.db import engine
@@ -9,19 +12,42 @@ from app.models import Base
 from app.routers import auth, todos
 from app.sockets import sio
 
-api = FastAPI(title=settings.app_name)
+api = FastAPI(
+    title=settings.app_name,
+    debug=settings.app_debug,
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
+)
+
+api.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.session_secret,
+    https_only=settings.is_production,
+    same_site="lax",
+    max_age=600,
+)
+
+api.add_middleware(GZipMiddleware, minimum_size=500)
 
 api.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:4173",  # vite preview
-    ],
+    allow_origins=settings.cors_allowed_origins_list,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+
+@api.middleware("http")
+async def add_security_headers(request: Request, call_next) -> Response:
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; connect-src 'self' https: ws: wss:"
+    return response
 
 api.include_router(auth.router)
 api.include_router(todos.router)

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { requestOTP, verifyOTP, googleCallback, facebookCallback, appleCallback } from "../auth_api";
+import { requestOTP, verifyOTP, googleCallback, facebookCallback, appleCallback, googleLoginUrl } from "../auth_api";
 import type { AuthToken, User } from "../types";
 import "./AuthPage.css";
 
@@ -22,20 +22,52 @@ export function AuthPage({ onAuthSuccess }: Props) {
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const isValidPhone = (phone: string) => /^[+]?[\d\s\-()]+$/.test(phone) && phone.length >= 10;
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const state = params.get("state") ?? undefined;
+
+    if (!code) {
+      return;
+    }
+
+    const oauthCode = code;
+
+    async function finishGoogleLogin() {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await googleCallback(oauthCode, state);
+        onAuthSuccess(response.access_token, response.user);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Google login failed");
+      } finally {
+        setLoading(false);
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    }
+
+    void finishGoogleLogin();
+  }, [onAuthSuccess]);
+
   async function handleSocialAuth(provider: "google" | "facebook" | "apple") {
     setLoading(true);
     setError("");
     try {
-      // In production, this would redirect to OAuth provider
-      // For now, simulate with hardcoded code
-      const code = `${provider}_auth_code_${Date.now()}`;
       let response: AuthToken;
 
       if (provider === "google") {
-        response = await googleCallback(code);
+        const oauthUrl = await googleLoginUrl();
+        window.location.assign(oauthUrl);
+        return;
       } else if (provider === "facebook") {
+        // Placeholder until full provider integration is added.
+        const code = `${provider}_auth_code_${Date.now()}`;
         response = await facebookCallback(code);
       } else {
+        // Placeholder until full provider integration is added.
+        const code = `${provider}_auth_code_${Date.now()}`;
         response = await appleCallback(code);
       }
 

@@ -32,7 +32,7 @@
 				"--host",
 				"0.0.0.0",
 				"--port",
-				"5173"
+				"5500"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}/frontend"

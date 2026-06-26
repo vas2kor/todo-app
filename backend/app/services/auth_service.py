@@ -1,10 +1,11 @@
 import random
 import string
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models import OTP, User
 
 
@@ -21,6 +22,19 @@ class OTPService:
 
     async def request_otp(self, email: str | None, phone: str | None) -> OTP:
         """Create a new OTP for signup."""
+        identity_query = select(OTP)
+        if email:
+            identity_query = identity_query.where(OTP.email == email)
+        elif phone:
+            identity_query = identity_query.where(OTP.phone == phone)
+
+        latest_result = await self.db.execute(identity_query.order_by(OTP.created_at.desc()).limit(1))
+        latest_otp = latest_result.scalar_one_or_none()
+        if latest_otp:
+            elapsed = (datetime.utcnow() - latest_otp.created_at).total_seconds()
+            if elapsed < settings.otp_resend_cooldown_seconds:
+                raise ValueError("Please wait before requesting another OTP")
+
         code = self.generate_otp_code()
         otp = OTP(email=email, phone=phone, code=code)
         self.db.add(otp)
@@ -30,7 +44,7 @@ class OTPService:
 
     async def verify_otp(self, email: str | None, phone: str | None, code: str) -> tuple[bool, User | None]:
         """Verify OTP and create user if valid."""
-        query = select(OTP).where(OTP.code == code)
+        query = select(OTP).where(OTP.code == code, OTP.verified_at.is_(None))
         if email:
             query = query.where(OTP.email == email)
         elif phone:

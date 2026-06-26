@@ -1,6 +1,18 @@
 import type { AuthToken } from "./types";
 
-const API_BASE = "";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+
+export async function googleLoginUrl(): Promise<string> {
+  const response = await fetch(`${API_BASE}/api/v1/auth/google/login`);
+  if (!response.ok) {
+    throw new Error("Failed to initialize Google login");
+  }
+  const data = (await response.json()) as { oauth_url?: string };
+  if (!data.oauth_url) {
+    throw new Error("Google OAuth URL missing in response");
+  }
+  return data.oauth_url;
+}
 
 export async function requestOTP(email?: string, phone?: string): Promise<{ code_for_testing?: string }> {
   let response: Response;
@@ -11,7 +23,7 @@ export async function requestOTP(email?: string, phone?: string): Promise<{ code
       body: JSON.stringify({ email, phone }),
     });
   } catch {
-    throw new Error("Cannot reach server. Make sure the backend is running on port 8000.");
+    throw new Error("Cannot reach server. Please try again shortly.");
   }
 
   if (!response.ok) {
@@ -30,7 +42,7 @@ export async function verifyOTP(code: string, email?: string, phone?: string): P
       body: JSON.stringify({ code, email, phone }),
     });
   } catch {
-    throw new Error("Cannot reach server. Make sure the backend is running on port 8000.");
+    throw new Error("Cannot reach server. Please try again shortly.");
   }
 
   if (!response.ok) {
@@ -40,11 +52,11 @@ export async function verifyOTP(code: string, email?: string, phone?: string): P
   return response.json();
 }
 
-export async function googleCallback(code: string): Promise<AuthToken> {
+export async function googleCallback(code: string, state?: string): Promise<AuthToken> {
   const response = await fetch(`${API_BASE}/api/v1/auth/google/callback`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, state }),
   });
 
   if (!response.ok) {
