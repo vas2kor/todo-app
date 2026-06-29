@@ -1,10 +1,12 @@
 import os
 import json
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 APP_ENV = os.getenv("APP_ENV", "development")
+ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
@@ -22,8 +24,14 @@ class Settings(BaseSettings):
     oauth_google_client_secret: str = ""
     oauth_google_redirect_uri: str = "http://localhost:5500/"
 
+    # Twilio SMS — required for real phone OTP delivery
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_messaging_service_sid: str = ""
+    twilio_from_number: str = ""
+
     model_config = SettingsConfigDict(
-        env_file=(".env", f".env.{APP_ENV}"),
+        env_file=(str(ROOT_DIR / ".env"), str(ROOT_DIR / f".env.{APP_ENV}")),
         env_file_encoding="utf-8",
         extra="ignore",
     )

@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -12,12 +14,21 @@ from app.models import Base
 from app.routers import auth, todos
 from app.sockets import sio
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    await _migrate_sqlite_todo_columns()
+    yield
+
+
 api = FastAPI(
     title=settings.app_name,
     debug=settings.app_debug,
     docs_url=None if settings.is_production else "/docs",
     redoc_url=None if settings.is_production else "/redoc",
     openapi_url=None if settings.is_production else "/openapi.json",
+    lifespan=lifespan,
 )
 
 api.add_middleware(
@@ -70,12 +81,6 @@ async def _migrate_sqlite_todo_columns() -> None:
         if "category" not in existing_columns:
             await conn.execute(text("ALTER TABLE todos ADD COLUMN category VARCHAR(64)"))
 
-
-@api.on_event("startup")
-async def startup() -> None:
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    await _migrate_sqlite_todo_columns()
 
 
 @api.get("/health")

@@ -9,6 +9,7 @@ from app.config import settings
 from app.db import get_db
 from app.schemas_auth import OTPRequest, OTPVerify, UserResponse, AuthToken, OAuthCallbackRequest
 from app.services.auth_service import OTPService, UserService
+from app.services.notification_service import SMSService
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -36,10 +37,22 @@ async def request_otp(payload: OTPRequest, db: AsyncSession = Depends(get_db)) -
     except ValueError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
 
-    # In production: send OTP via email/SMS
-    response = {"message": "OTP sent"}
-    if settings.expose_test_otp and not settings.is_production:
+    response: dict[str, str] = {"message": "OTP sent"}
+    used_sms_fallback = False
+
+    # Attempt real SMS delivery when a phone number is provided.
+    if payload.phone:
+        result = await SMSService.send_otp(payload.phone, otp.code)
+        if not result.sent and result.error:
+            # Delivery failed for a reason other than "not configured" — surface it.
+            raise HTTPException(status_code=502, detail=f"SMS delivery failed: {result.error}")
+        used_sms_fallback = not result.sent
+
+    # Return test code only when explicitly enabled and the SMS path was not used.
+    # This keeps local testing easy without masking successful Twilio delivery.
+    if settings.expose_test_otp and not settings.is_production and (not payload.phone or used_sms_fallback):
         response["code_for_testing"] = otp.code
+
     return response
 
 
@@ -102,7 +115,8 @@ async def google_callback(payload: OAuthCallbackRequest, request: Request, db: A
         )
 
         if token_response.status_code != 200:
-            raise HTTPException(status_code=502, detail="Failed to exchange Google authorization code")
+            google_error = token_response.json().get("error_description") or token_response.json().get("error", "unknown")
+            raise HTTPException(status_code=502, detail=f"Google token exchange failed: {google_error}")
 
         token_payload = token_response.json()
         access_token = token_payload.get("access_token")
@@ -115,7 +129,8 @@ async def google_callback(payload: OAuthCallbackRequest, request: Request, db: A
         )
 
         if userinfo_response.status_code != 200:
-            raise HTTPException(status_code=502, detail="Failed to fetch Google user profile")
+            google_error = userinfo_response.json().get("error_description") or userinfo_response.json().get("error", "unknown")
+            raise HTTPException(status_code=502, detail=f"Google userinfo fetch failed: {google_error}")
 
     google_user = userinfo_response.json()
     provider_id = google_user.get("sub")
